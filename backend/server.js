@@ -11,6 +11,9 @@ app.use(express.json())
 const taskRoutes = require("./routes/taskRoutes")
 app.use("/tasks", taskRoutes)
 
+// 🔥 DEBUG LINE
+console.log("MONGO_URI:", process.env.MONGO_URI)
+
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("DB connected"))
 .catch(err => console.log("DB ERROR:", err.message))
