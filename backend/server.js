@@ -13,7 +13,7 @@ app.use("/tasks", taskRoutes)
 
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("DB connected"))
-.catch(err => console.log(err))
+.catch(err => console.log("DB ERROR:", err.message))
 
 app.get("/", (req, res) => {
   res.send("API working")
