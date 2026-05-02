@@ -11,16 +11,26 @@ app.use(express.json())
 const taskRoutes = require("./routes/taskRoutes")
 app.use("/tasks", taskRoutes)
 
-// 🔥 DEBUG LINE
-console.log("MONGO_URI:", process.env.MONGO_URI)
+// ✅ Safe debug (does NOT expose password)
+console.log("MONGO_URI exists:", !!process.env.MONGO_URI)
 
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("DB connected"))
-.catch(err => console.log("DB ERROR:", err.message))
+// ✅ Start server only after DB connects
+const startServer = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI)
+    console.log("DB connected")
+
+    const PORT = process.env.PORT || 5000
+    app.listen(PORT, () =>
+      console.log("Server running on port " + PORT)
+    )
+  } catch (err) {
+    console.log("DB ERROR:", err.message)
+  }
+}
+
+startServer()
 
 app.get("/", (req, res) => {
   res.send("API working")
 })
-
-const PORT = process.env.PORT || 5000
-app.listen(PORT, () => console.log("Server running on port " + PORT))

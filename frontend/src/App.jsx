@@ -7,11 +7,32 @@ function App() {
   const [filter, setFilter] = useState("all")
   const [loading, setLoading] = useState(false)
 
-  const API = "http://localhost:5000/tasks"
+  // 🔥 FIXED: Works for local + deployed
+  const API = import.meta.env.VITE_API_URL || "http://localhost:5000/tasks"
 
-  const fetchTasks = async () => {
+  // ✅ Fetch tasks (no React warning now)
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true)
+        const res = await axios.get(API)
+        setTasks(res.data)
+      } catch (err) {
+        console.log(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTasks()
+  }, [API])
+
+  const addTask = async () => {
+    if (!title.trim()) return
     try {
       setLoading(true)
+      await axios.post(API, { title })
+      setTitle("")
       const res = await axios.get(API)
       setTasks(res.data)
     } catch (err) {
@@ -21,60 +42,47 @@ function App() {
     }
   }
 
-  const addTask = async () => {
-    if (!title.trim()) return
-    try {
-      setLoading(true)
-      await axios.post(API, { title })
-      setTitle("")
-      fetchTasks()
-    } catch (err) {
-      console.log(err)
-      setLoading(false)
-    }
-  }
-
   const deleteTask = async (id) => {
     try {
       setLoading(true)
       await axios.delete(`${API}/${id}`)
-      fetchTasks()
+      setTasks(tasks.filter(t => t._id !== id))
     } catch (err) {
       console.log(err)
+    } finally {
       setLoading(false)
     }
   }
 
   const toggleTask = async (task) => {
     try {
-      setLoading(true)
       await axios.put(`${API}/${task._id}`, {
         completed: !task.completed
       })
-      fetchTasks()
+      setTasks(tasks.map(t =>
+        t._id === task._id ? { ...t, completed: !t.completed } : t
+      ))
     } catch (err) {
       console.log(err)
-      setLoading(false)
     }
   }
 
   const clearCompleted = async () => {
-    const completedTasks = tasks.filter(t => t.completed)
     try {
       setLoading(true)
-      for (let t of completedTasks) {
-        await axios.delete(`${API}/${t._id}`)
-      }
-      fetchTasks()
+      const completedTasks = tasks.filter(t => t.completed)
+
+      await Promise.all(
+        completedTasks.map(t => axios.delete(`${API}/${t._id}`))
+      )
+
+      setTasks(tasks.filter(t => !t.completed))
     } catch (err) {
       console.log(err)
+    } finally {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    fetchTasks()
-  }, [])
 
   const completed = tasks.filter(t => t.completed).length
 
@@ -98,17 +106,12 @@ function App() {
         padding: "25px",
         borderRadius: "12px",
         background: "#111",
-        boxShadow: `
-          0 10px 30px rgba(0,0,0,0.2),
-          inset 0 0 15px rgba(255,255,255,0.05)
-        `,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
         color: "white"
       }}>
-        <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
-          Task Manager
-        </h2>
+        <h2 style={{ textAlign: "center" }}>Task Manager</h2>
 
-        <p style={{ textAlign: "center", color: "#aaa", marginBottom: "15px" }}>
+        <p style={{ textAlign: "center", color: "#aaa" }}>
           {tasks.length} tasks • {completed} completed
         </p>
 
@@ -130,17 +133,15 @@ function App() {
           />
           <button
             onClick={addTask}
+            disabled={!title.trim()}
             style={{
-              padding: "10px 14px",
+              padding: "10px",
               borderRadius: "6px",
-              border: "none",
               background: "#fff",
               color: "#000",
               cursor: "pointer",
-              transition: "0.2s"
+              opacity: title.trim() ? 1 : 0.5
             }}
-            onMouseOver={(e) => e.target.style.opacity = 0.8}
-            onMouseOut={(e) => e.target.style.opacity = 1}
           >
             Add
           </button>
@@ -151,36 +152,44 @@ function App() {
           display: "flex",
           justifyContent: "space-between",
           marginBottom: "10px",
-          fontSize: "14px",
           color: "#ccc"
         }}>
-          <span style={{ cursor: "pointer" }} onClick={() => setFilter("all")}>All</span>
-          <span style={{ cursor: "pointer" }} onClick={() => setFilter("active")}>Active</span>
-          <span style={{ cursor: "pointer" }} onClick={() => setFilter("completed")}>Completed</span>
+          {["all", "active", "completed"].map(f => (
+            <span
+              key={f}
+              onClick={() => setFilter(f)}
+              style={{
+                cursor: "pointer",
+                fontWeight: filter === f ? "bold" : "normal",
+                color: filter === f ? "#fff" : "#888"
+              }}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </span>
+          ))}
         </div>
 
         {/* Loading */}
-        {loading && (
-          <p style={{ textAlign: "center", color: "#888" }}>Loading...</p>
-        )}
+        {loading && <p style={{ textAlign: "center" }}>Loading...</p>}
 
         {/* Tasks */}
         {!loading && (
-          <ul style={{ padding: 0, listStyle: "none" }}>
+          <ul style={{ listStyle: "none", padding: 0 }}>
             {filteredTasks.length === 0 && (
-              <p style={{ textAlign: "center", color: "#666" }}>No tasks</p>
+              <p style={{ textAlign: "center", color: "#666" }}>
+                No tasks yet 🚀
+              </p>
             )}
 
             {filteredTasks.map(task => (
               <li key={task._id} style={{
-                background: "#000",
-                border: "1px solid #222",
-                marginBottom: "10px",
-                padding: "10px",
-                borderRadius: "6px",
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center"
+                marginBottom: "10px",
+                padding: "10px",
+                background: "#000",
+                border: "1px solid #222",
+                borderRadius: "6px"
               }}>
                 <span
                   onClick={() => toggleTask(task)}
@@ -198,15 +207,12 @@ function App() {
                     background: "#fff",
                     color: "#000",
                     border: "none",
-                    padding: "5px 8px",
+                    padding: "4px 8px",
                     borderRadius: "4px",
-                    cursor: "pointer",
-                    transition: "0.2s"
+                    cursor: "pointer"
                   }}
-                  onMouseOver={(e) => e.target.style.opacity = 0.7}
-                  onMouseOut={(e) => e.target.style.opacity = 1}
                 >
-                  X
+                  ✕
                 </button>
               </li>
             ))}
@@ -218,18 +224,13 @@ function App() {
           <button
             onClick={clearCompleted}
             style={{
-              marginTop: "10px",
               width: "100%",
               padding: "10px",
               background: "#fff",
               color: "#000",
-              border: "none",
               borderRadius: "6px",
-              cursor: "pointer",
-              transition: "0.2s"
+              cursor: "pointer"
             }}
-            onMouseOver={(e) => e.target.style.opacity = 0.8}
-            onMouseOut={(e) => e.target.style.opacity = 1}
           >
             Clear Completed
           </button>
