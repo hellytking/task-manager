@@ -8,8 +8,7 @@ function App() {
   const [loading, setLoading] = useState(false)
 
   // 🔥 FIXED: Works for local + deployed
-  const API = import.meta.env.VITE_API_URL || "http://localhost:5000/tasks"
-
+const API = "https://task-manager-9x1k.onrender.com/tasks"
   // ✅ Fetch tasks (no React warning now)
   useEffect(() => {
     const fetchTasks = async () => {
